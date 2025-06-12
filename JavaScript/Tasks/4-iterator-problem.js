@@ -1,35 +1,33 @@
-'use strict';
-
 // Task: ensure all blocks of code in the usage section iterate in parallel.
 // Currently, only the last block (of 3) works. Fix this issue so that
 // all blocks can iterate concurrently using a single `Timer` instance.
 
+'use strict';
 class Timer {
   #counter = 0;
-  #resolve = null;
+  #resolvers = [];
 
   constructor(delay) {
     setInterval(() => {
       this.#counter++;
-      if (this.#resolve) {
-        this.#resolve({
+      for (const resolve of this.#resolvers) {
+        resolve({
           value: this.#counter,
           done: false,
         });
       }
+      this.#resolvers = [];
     }, delay);
   }
 
   [Symbol.asyncIterator]() {
-    const next = () => new Promise((resolve) => {
-      this.#resolve = resolve;
-    });
-    const iterator = { next };
-    return iterator;
+    return {
+      next: () => new Promise((resolve) => {
+        this.#resolvers.push(resolve);
+      }),
+    };
   }
 }
-
-// Usage
 
 const main = async () => {
   const timer = new Timer(1000);
